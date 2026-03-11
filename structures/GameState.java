@@ -61,8 +61,23 @@ public class GameState {
     public Map<String, structures.basic.Unit> visualUnits = new HashMap<>();
     public Map<Integer, structures.basic.Card> visualHand = new HashMap<>();
 
-    /** highlighted tile keys like "x,y" */
+    /** highlighted tile keys like "x,y" (transient action highlights only) */
     public Set<String> highlightedTiles = new HashSet<>();
+
+    /** per-tile mode for transient action highlights, e.g. green move vs red attack */
+    public Map<String, Integer> highlightedTileModes = new HashMap<>();
+
+    /** persistent blue base markers under human-controlled units */
+    public Set<String> persistentFriendlyBaseTiles = new HashSet<>();
+
+    /** persistent red base markers under AI-controlled units */
+    public Set<String> persistentEnemyBaseTiles = new HashSet<>();
+
+    /** selected unit tile key, rendered with highest priority */
+    public String selectedUnitTileKey = null;
+
+    /** union of overlay tiles last pushed to the UI; used to clear stale highlights */
+    public Set<String> renderedOverlayTiles = new HashSet<>();
 
     /** highlighted target unit ids */
     public Set<String> highlightedTargets = new HashSet<>();

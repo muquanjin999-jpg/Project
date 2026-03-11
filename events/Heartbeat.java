@@ -102,11 +102,18 @@ public class Heartbeat implements EventProcessor {
 			game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 			game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 			game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
-			game.ui.TemplateCommandDispatcher.showNotification(out, "Your turn.");
+			game.ui.TemplateCommandDispatcher.showNotification(out, "Your turn.", game.model.GameState.P1);
 			return;
 		}
 
 		// Execute exactly ONE AI step
+		java.util.Map<String, game.model.TilePos> preStepPositions = new java.util.HashMap<>();
+		java.util.Map<String, game.model.Unit> preStepUnits = new java.util.HashMap<>();
+		for (game.model.Unit u : gameState.domainState.getBoard().getAllUnits()) {
+			preStepPositions.put(u.getId(), u.getPosition());
+			preStepUnits.put(u.getId(), u);
+		}
+		java.util.List<game.card.Card> preAiHand = gameState.domainState.getPlayer(game.model.GameState.P2).getHand().snapshot();
 		game.ai.AIController.StepResult r = gameState.aiController.step(gameState.domainState);
 		if (r == null || r.type == null) return;
 
@@ -120,7 +127,7 @@ public class Heartbeat implements EventProcessor {
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
-				game.ui.TemplateCommandDispatcher.showNotification(out, "Your turn.");
+				game.ui.TemplateCommandDispatcher.showNotification(out, "Your turn.", game.model.GameState.P1);
 				break;
 
 			case MOVE:
@@ -145,12 +152,16 @@ public class Heartbeat implements EventProcessor {
 				gameState.inputLocked = false;
 				gameState.animationLockTicks = 0;
 
-				// Minimal: re-render after domain attack has happened inside AIController.step()
+				game.model.Unit aiAttacker = preStepUnits.get(r.unitId);
+				game.model.TilePos aiAttackerPos = preStepPositions.get(r.unitId);
+				game.model.TilePos aiDefenderPos = preStepPositions.get(r.targetUnitId);
+				game.ui.TemplateCommandDispatcher.animateAttack(out, gameState, aiAttacker, aiAttackerPos, aiDefenderPos);
+
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 
 				// Small pacing gap so AI actions do not happen in the same heartbeat burst
-				gameState.aiFallbackCooldownTicks = 1;
+				gameState.aiFallbackCooldownTicks = 0;
 				break;
 
 			case PLAY_CARD:
@@ -160,11 +171,31 @@ public class Heartbeat implements EventProcessor {
 				gameState.inputLocked = false;
 				gameState.animationLockTicks = 0;
 
+				game.card.Card aiPlayedCard = (r.handIndex != null && r.handIndex >= 0 && r.handIndex < preAiHand.size())
+						? preAiHand.get(r.handIndex)
+						: null;
+				game.model.TilePos effectPos = null;
+				if (r.cardTarget != null) {
+					if (r.cardTarget.getTilePos() != null) {
+						effectPos = r.cardTarget.getTilePos();
+					} else if (r.cardTarget.getUnitId() != null) {
+						effectPos = preStepPositions.get(r.cardTarget.getUnitId());
+					}
+				}
+				if (effectPos == null) {
+					effectPos = gameState.domainState.getPlayer(game.model.GameState.P2).getAvatar().getPosition();
+				}
+				if (aiPlayedCard instanceof game.card.UnitCard) {
+					game.ui.TemplateCommandDispatcher.playSummonEffectAt(out, effectPos);
+				} else {
+					game.ui.TemplateCommandDispatcher.playEffectAt(out, effectPos, utils.StaticConfFiles.f1_inmolation);
+				}
+
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
 
-				gameState.aiFallbackCooldownTicks = 1;
+				gameState.aiFallbackCooldownTicks = 0;
 				break;
 
 			case END_TURN:
@@ -173,7 +204,7 @@ public class Heartbeat implements EventProcessor {
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
-				game.ui.TemplateCommandDispatcher.showNotification(out, "Your turn.");
+				game.ui.TemplateCommandDispatcher.showNotification(out, "Your turn.", game.model.GameState.P1);
 				break;
 
 			default:

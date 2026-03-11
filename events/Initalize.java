@@ -28,6 +28,11 @@ public class Initalize implements EventProcessor {
 		gameState.selectedUnitId = null;
 		gameState.selectedHandPos = null;
 		gameState.highlightedTiles.clear();
+		gameState.highlightedTileModes.clear();
+		gameState.persistentFriendlyBaseTiles.clear();
+		gameState.persistentEnemyBaseTiles.clear();
+		gameState.selectedUnitTileKey = null;
+		gameState.renderedOverlayTiles.clear();
 		gameState.highlightedTargets.clear();
 		gameState.visualUnits.clear();
 		gameState.visualHand.clear();
@@ -61,7 +66,7 @@ public class Initalize implements EventProcessor {
         if (gameState.animationGate != null) {
             gameState.animationGate.lock("initial_render");
         }
-		TemplateCommandDispatcher.showNotification(out, "Game started. Your turn.");
-	}
+        TemplateCommandDispatcher.showNotification(out, "Card + green tile = summon. Unit tile = move/attack.", game.model.GameState.P1, 6);
+        }
 
 }

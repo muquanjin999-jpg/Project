@@ -30,11 +30,12 @@ public class EndTurnClicked implements EventProcessor {
 		
 		// No explicit end_turn animation in the template UI -> do not lock the gate.
 		gameState.inputLocked = false;
-		gameState.aiFallbackCooldownTicks = 1;
+		gameState.aiFallbackCooldownTicks = 2;
 		
 		// Clear any selections/highlights
 		gameState.selectedUnitId = null;
 		gameState.selectedHandPos = null;
+		game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 		game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 		gameState.highlightedTargets.clear();
 
@@ -49,9 +50,9 @@ public class EndTurnClicked implements EventProcessor {
 
 			// lock and let Heartbeat drive the AI steps
 
-			game.ui.TemplateCommandDispatcher.showNotification(out, "AI turn...");
+			game.ui.TemplateCommandDispatcher.showNotification(out, "AI turn.", game.model.GameState.P2, 3);
 		} else {
-			game.ui.TemplateCommandDispatcher.showNotification(out, "Turn ended.");
+			game.ui.TemplateCommandDispatcher.showNotification(out, "Turn ended.", game.model.GameState.P1);
 		}
 	}
 

@@ -39,6 +39,7 @@ public class UnitStopped implements EventProcessor {
 
         // Optional: clear selections & highlights (prevents odd UI states after move)
         gameState.selectedUnitId = null;
+        game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
         game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
         gameState.highlightedTargets.clear();
 

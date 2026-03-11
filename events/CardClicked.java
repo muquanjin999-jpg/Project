@@ -45,6 +45,7 @@ public class CardClicked implements EventProcessor {
 			gameState.selectedHandPos = null;
 			gameState.pendingCompositeHandPos = null;
 			gameState.portalStepSourceUnitId = null;
+			game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 
 			game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 			gameState.highlightedTargets.clear();
@@ -59,12 +60,14 @@ public class CardClicked implements EventProcessor {
 		// Toggle selection
 		if (gameState.selectedHandPos != null && gameState.selectedHandPos == handPosition) {
 			gameState.selectedHandPos = null;
+			game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 			game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 			gameState.highlightedTargets.clear();
 			return;
 		}
 
 		gameState.selectedUnitId = null;
+		game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 		gameState.selectedHandPos = handPosition;
 		game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 		gameState.highlightedTargets.clear();
@@ -78,6 +81,7 @@ public class CardClicked implements EventProcessor {
 			gameState.selectedHandPos = null;
 			gameState.pendingCompositeHandPos = null;
 			gameState.portalStepSourceUnitId = null;
+			game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 
 			game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 			gameState.highlightedTargets.clear();
@@ -109,6 +113,10 @@ public class CardClicked implements EventProcessor {
 				gameState.selectedHandPos = null;
 				gameState.highlightedTargets.clear();
 				game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
+				game.ui.TemplateCommandDispatcher.playBuffEffectAt(
+						out,
+						gameState.domainState.getPlayer(game.model.GameState.P1).getAvatar().getPosition()
+				);
 
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
@@ -133,7 +141,8 @@ public class CardClicked implements EventProcessor {
 				}
 			}
 			if (!highlights.isEmpty()) {
-				game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 1);
+				game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 5);
+				game.ui.TemplateCommandDispatcher.showNotification(out, "Summon selected. Green tiles = valid summon positions.", game.model.GameState.P1, 4);
 			} else {
 				game.ui.TemplateCommandDispatcher.showNotification(out, "No valid summon tiles.");
 			}
@@ -153,9 +162,11 @@ public class CardClicked implements EventProcessor {
 
 			game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 			if (!highlights.isEmpty()) {
-				game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 1);
+				game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 5);
+				game.ui.TemplateCommandDispatcher.showNotification(out, "Portal Step selected. Green tiles = valid source units.", game.model.GameState.P1, 4);
+			} else {
+				game.ui.TemplateCommandDispatcher.showNotification(out, "Portal Step: no valid source units.");
 			}
-			game.ui.TemplateCommandDispatcher.showNotification(out, "Portal Step: click a friendly unit, then a destination tile.");
 			return;
 		}
 
@@ -187,7 +198,8 @@ public class CardClicked implements EventProcessor {
 			}
 
 			if (!highlights.isEmpty()) {
-				game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 1);
+				game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 5);
+				game.ui.TemplateCommandDispatcher.showNotification(out, "Targeted spell. Green tiles = valid targets.", game.model.GameState.P1, 4);
 			} else {
 				game.ui.TemplateCommandDispatcher.showNotification(out, "No valid targets.");
 			}

@@ -50,6 +50,7 @@ public class TileClicked implements EventProcessor {
 		if (unitOnTile != null && unitOnTile.getOwnerId().equals(game.model.GameState.P1)) {
 			gameState.selectedUnitId = unitOnTile.getId();
 			game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
+			game.ui.TemplateCommandDispatcher.setSelectedUnitTile(out, gameState, unitOnTile.getPosition());
 			gameState.highlightedTargets.clear();
 			highlightForSelectedUnit(out, gameState, unitOnTile);
 			return;
@@ -60,6 +61,7 @@ public class TileClicked implements EventProcessor {
 			game.model.Unit selected = gameState.domainState.getBoard().getUnitById(gameState.selectedUnitId).orElse(null);
 			if (selected == null) {
 				gameState.selectedUnitId = null;
+				game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 				game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 				gameState.highlightedTargets.clear();
 				return;
@@ -67,12 +69,17 @@ public class TileClicked implements EventProcessor {
 
 			// Attack enemy unit if clicked has enemy unit
 			if (unitOnTile != null && !unitOnTile.getOwnerId().equals(game.model.GameState.P1)) {
+				game.model.TilePos attackerPosBefore = selected.getPosition();
+				game.model.TilePos defenderPosBefore = unitOnTile.getPosition();
+
 				game.system.action.ValidationResult vr = gameState.domainGameManager.attack(
 						game.model.GameState.P1, selected.getId(), unitOnTile.getId());
 				if (!vr.isOk()) {
 					game.ui.TemplateCommandDispatcher.showNotification(out, vr.getMessage());
 					return;
 				}
+
+				game.ui.TemplateCommandDispatcher.animateAttack(out, gameState, selected, attackerPosBefore, defenderPosBefore);
 
 				// No reliable UI ack for ATTACK in current template flow.
 				// Apply result immediately and keep input responsive.
@@ -81,6 +88,7 @@ public class TileClicked implements EventProcessor {
 				gameState.aiFallbackCooldownTicks = 0;
 
 				gameState.selectedUnitId = null;
+				game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 				game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 				gameState.highlightedTargets.clear();
 
@@ -111,6 +119,7 @@ public class TileClicked implements EventProcessor {
 				gameState.animationLockTicks = 0;
 
 				gameState.selectedUnitId = null;
+				game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 				game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 				gameState.highlightedTargets.clear();
 
@@ -135,6 +144,7 @@ public class TileClicked implements EventProcessor {
 		game.model.Hand<game.card.Card> hand = gameState.domainState.getPlayer(game.model.GameState.P1).getHand();
 		if (handIndex < 0 || handIndex >= hand.size()) {
 			gameState.selectedHandPos = null;
+			game.ui.TemplateCommandDispatcher.clearSelectedUnitTile(out, gameState);
 			game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 			gameState.highlightedTargets.clear();
 			return;
@@ -209,6 +219,7 @@ public class TileClicked implements EventProcessor {
 
 			game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 			gameState.highlightedTargets.clear();
+			game.ui.TemplateCommandDispatcher.playBuffEffectAt(out, clicked);
 
 			game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 			game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
@@ -227,9 +238,15 @@ public class TileClicked implements EventProcessor {
 			return;
 		}
 
-		gameState.inputLocked = false;
-		gameState.animationLockTicks = 0;
-		gameState.aiFallbackCooldownTicks = 0;
+		if (selectedCard instanceof game.card.UnitCard) {
+		    gameState.inputLocked = true;
+		    gameState.animationLockTicks = 0;
+		    gameState.aiFallbackCooldownTicks = 0;
+		} else {
+		    gameState.inputLocked = false;
+		    gameState.animationLockTicks = 0;
+		    gameState.aiFallbackCooldownTicks = 0;
+		}
 
 		gameState.selectedHandPos = null;
 		gameState.portalStepSourceUnitId = null;
@@ -238,17 +255,23 @@ public class TileClicked implements EventProcessor {
 		game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 		gameState.highlightedTargets.clear();
 
+		if (selectedCard instanceof game.card.UnitCard) {
+			game.ui.TemplateCommandDispatcher.playSummonEffectAt(out, clicked);
+		} else {
+			game.ui.TemplateCommandDispatcher.playEffectAt(out, clicked, utils.StaticConfFiles.f1_inmolation);
+		}
+
 		game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 		game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 		game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
 	}
 
 	private void highlightForSelectedUnit(ActorRef out, GameState gameState, game.model.Unit unit) {
-		java.util.Set<game.model.TilePos> tiles = new java.util.HashSet<>();
+		java.util.Map<game.model.TilePos, Integer> tileModes = new java.util.HashMap<>();
 		game.system.action.ReachabilityService rs = new game.system.action.ReachabilityService();
 
 		for (game.model.TilePos p : rs.reachableTiles(gameState.domainState.getBoard(), unit)) {
-			tiles.add(p);
+			tileModes.put(p, 5); 
 		}
 
 		game.system.action.ActionValidator validator =
@@ -257,14 +280,20 @@ public class TileClicked implements EventProcessor {
 			if (enemy.getOwnerId().equals(game.model.GameState.P1)) continue;
 			game.system.action.ValidationResult vr = validator.validateAttack(
 					gameState.domainState, game.model.GameState.P1, unit.getId(), enemy.getId());
-			if (vr.isOk()) tiles.add(enemy.getPosition());
+			if (vr.isOk() && enemy.getPosition() != null) {
+				tileModes.put(enemy.getPosition(), 2); // red = attackable
+			}
 		}
 
 		game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
+		game.ui.TemplateCommandDispatcher.setSelectedUnitTile(out, gameState, unit.getPosition());
 		gameState.highlightedTargets.clear();
 
-		if (!tiles.isEmpty()) {
-			game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, tiles, 1);
+		if (!tileModes.isEmpty()) {
+			game.ui.TemplateCommandDispatcher.highlightTilesWithModes(out, gameState, tileModes);
 		}
+		game.ui.TemplateCommandDispatcher.showNotification(out,
+		        "Selected " + unit.getName() + ". Green = move. Red = attack.",
+		        game.model.GameState.P1, 4);
 	}
 }
