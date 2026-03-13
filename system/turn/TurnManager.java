@@ -21,8 +21,8 @@ public class TurnManager<T> {
         // Put game into running state and start P1's first turn.
         state.setStatus(GameStatus.RUNNING);
         state.setActivePlayerId(GameState.P1);
-        state.getPlayer(GameState.P1).setMaxMana(0);
-        state.getPlayer(GameState.P2).setMaxMana(0);
+        state.getPlayer(GameState.P1).setMaxMana(1);
+        state.getPlayer(GameState.P2).setMaxMana(1);
         state.getPlayer(GameState.P1).setMana(0);
         state.getPlayer(GameState.P2).setMana(0);
 
