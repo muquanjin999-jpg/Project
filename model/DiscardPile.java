@@ -17,6 +17,12 @@ public class DiscardPile<T> {
         return new ArrayList<>(cards);
     }
 
+    public List<T> drainAll() {
+        List<T> out = new ArrayList<>(cards);
+        cards.clear();
+        return out;
+    }
+
     @Override
     public String toString() {
         return cards.toString();

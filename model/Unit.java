@@ -57,7 +57,7 @@ public class Unit {
     public int getMaxHp() { return maxHp; }
     public void setMaxHp(int maxHp) { this.maxHp = maxHp; }
 
-    public void damage(int amount) { this.hp -= Math.max(0, amount); }
+    public void damage(int amount) { this.hp = Math.max(0, this.hp - Math.max(0, amount)); }
     public void heal(int amount) { this.hp = Math.min(maxHp, this.hp + Math.max(0, amount)); }
 
     public boolean isDead() { return hp <= 0; }

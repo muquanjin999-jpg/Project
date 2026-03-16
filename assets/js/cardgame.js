@@ -17,10 +17,10 @@ function initHexi(preloadImages) {
 function load(){
   
   //Display the file currently being loaded
-  console.log(`loading: ${g.loadingFile}`); 
+  //console.log(`loading: ${g.loadingFile}`); 
 
   //Display the percentage of files currently loaded
-  console.log(`progress: ${g.loadingProgress}`);
+  //console.log(`progress: ${g.loadingProgress}`);
 
   //Add an optional loading bar 
   g.loadingBar();
@@ -58,13 +58,44 @@ function bgClicked(eventData) {
   	}));
 }
 
+function applyTileMode(tile, mode) {
+	tile.tint = 0xFFFFFF;
+	tile.alpha = 1.0;
+
+	// 3 = friendly base (blue)
+	if (mode === 3) {
+		tile.show(1);
+		tile.tint = 0x5BC0FF;
+		tile.alpha = 0.90;
+		return;
+	}
+
+	// 4 = selected unit (gold)
+	if (mode === 4) {
+		tile.show(1);
+		tile.tint = 0xFFD84D;
+		tile.alpha = 0.98;
+		return;
+	}
+
+	// 5 = move / valid-place highlight (green)
+	if (mode === 5) {
+		tile.show(1);
+		tile.tint = 0x55DD77;
+		tile.alpha = 0.95;
+		return;
+	}
+
+	tile.show(mode);
+}
+
 function drawTile(message) {
 	
 	var tileid = message.tile.tilex+"-"+message.tile.tiley;
 	
 	if (boardTiles.has(tileid)) {
 		var tile = boardTiles.get(tileid);
-		tile.show(message.mode);
+		applyTileMode(tile, message.mode);
 		
 	} else {
 		var tile = g.sprite(message.tile.tileTextures);
@@ -73,7 +104,7 @@ function drawTile(message) {
     	tile.height = message.tile.height;
 		tile.tilex = message.tile.tilex;
 		tile.tiley = message.tile.tiley;
-		tile.show(message.mode);
+		applyTileMode(tile, message.mode);
 		tile.interactive = true;
 		tile.on('click', tileClicked);
     	g.stage.addChild(tile);
@@ -335,7 +366,7 @@ function getFrameSet(unit) {
 		frameSet = unit.animations.hit;
 	}
 	
-	console.log(frameSet);
+	//// console.log(frameSet);
 	
 	return frameSet;
 }
@@ -837,18 +868,23 @@ function setPlayer2Mana(message) {
 
 function addPlayer1Notification(message) {
 	if (player1Notification==null) {
-		// we need to create a new notification
-		
 		player1Notification = g.sprite("assets/game/extra/ui/tooltip_left@2x.png");
-    	player1Notification.setPosition(320, 100);
-    	player1Notification.width = 800;
-    	player1Notification.height = 150;
+    	player1Notification.setPosition(250, 70);
+    	player1Notification.width = 650;
+    	player1Notification.height = 130;
 		player1Notification.countdown = message.seconds*60;
 		g.stage.addChild(player1Notification);
 		
-		player1NotificationText = new PIXI.Text(message.text, { font: '35px Roboto', fill: 'white', align: 'center' });
-		player1NotificationText.position.x = 460;
-		player1NotificationText.position.y = 150;
+		player1NotificationText = new PIXI.Text(message.text, {
+			font: '28px Roboto',
+			fill: 'white',
+			align: 'center',
+			wordWrap: true,
+			wordWrapWidth: 500,
+			breakWords: true
+		});
+		player1NotificationText.position.x = 385;
+		player1NotificationText.position.y = 98;
 		g.stage.addChild(player1NotificationText);
 	} else {
 		player1Notification.countdown = message.seconds*60;
@@ -858,18 +894,23 @@ function addPlayer1Notification(message) {
 
 function addPlayer2Notification(message) {
 	if (player2Notification==null) {
-		// we need to create a new notification
-		
 		player2Notification = g.sprite("assets/game/extra/ui/tooltip_right@2x.png");
-    	player2Notification.setPosition(320, 100);
-    	player2Notification.width = 800;
-    	player2Notification.height = 150;
+    	player2Notification.setPosition(1040, 70);
+    	player2Notification.width = 650;
+    	player2Notification.height = 130;
 		player2Notification.countdown = message.seconds*60;
 		g.stage.addChild(player2Notification);
 		
-		player2NotificationText = new PIXI.Text(message.text, { font: '35px Roboto', fill: 'white', align: 'center' });
-		player2NotificationText.position.x = 460;
-		player2NotificationText.position.y = 150;
+		player2NotificationText = new PIXI.Text(message.text, {
+			font: '28px Roboto',
+			fill: 'white',
+			align: 'center',
+			wordWrap: true,
+			wordWrapWidth: 500,
+			breakWords: true
+		});
+		player2NotificationText.position.x = 1145;
+		player2NotificationText.position.y = 98;
 		g.stage.addChild(player2NotificationText);
 	} else {
 		player2Notification.countdown = message.seconds*60;
@@ -924,7 +965,7 @@ function playEffectAnimation(message) {
 	var frameDiff = (60/effect.fps)+1;
 	effect.killCountdown = frameDiff*message.effect.animationTextures.length;
 	
-	console.log(effect);
+	//// console.log(effect);
 	
 	playingEffects.push(effect);
 }
