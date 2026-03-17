@@ -234,7 +234,7 @@ function renderCardPreview(position) {
 	manaText.position.y = 25;
 	previewContainer.addChild(manaText);
 	
-	for (i = 0; i < card.bigCard.rulesTextRows.length; i++) {
+	for (let i = 0; i < card.bigCard.rulesTextRows.length; i++) {
 		var line = card.bigCard.rulesTextRows[i];
 		var rulesLine = new PIXI.Text(line, { font: '15px Roboto', fill: 'white', align: 'center' });
 		rulesLine.position.x = 30;
@@ -407,6 +407,10 @@ function executeMoveStep(message) {
 	
 	var targetUnit = sprites.get(message.unit.id);
 	var targetContainer = spriteContainers.get(message.unit.id);
+	if (!targetUnit || !targetContainer) {
+		// Visual can be deleted/re-synced during async updates; stop this move step safely.
+		return true;
+	}
 	
 	if (message.unit.animation != "move") {
 		targetUnit.stopAnimation();
@@ -593,15 +597,17 @@ function executeProjectileMoveStep(projectile) {
 function setUnitHealth(message) {
 	var unitID = message.unit.id;
 	var health = message.health;
-	
-	
-	var oldHealth = parseInt(healthLabels.get(unitID).text);
-	healthLabels.get(unitID).text = health;
+
+	var healthLabel = healthLabels.get(unitID);
+	if (!healthLabel) return;
+
+	var oldHealth = parseInt(healthLabel.text);
+	healthLabel.text = health;
 	
 	if (health>9 && oldHealth<10) {
-		healthLabels.get(unitID).position.x = healthLabels.get(unitID).position.x-5;
+		healthLabel.position.x = healthLabel.position.x-5;
 	} else if (health<10 && oldHealth>9) {
-		healthLabels.get(unitID).position.x = healthLabels.get(unitID).position.x+5;
+		healthLabel.position.x = healthLabel.position.x+5;
 	}
 	
 }
@@ -609,15 +615,17 @@ function setUnitHealth(message) {
 function setUnitAttack(message) {
 	var unitID = message.unit.id;
 	var attack = message.attack;
-	
-	
-	var oldAttack = parseInt(attackLabels.get(unitID).text);
-	attackLabels.get(unitID).text = attack;
+
+	var attackLabel = attackLabels.get(unitID);
+	if (!attackLabel) return;
+
+	var oldAttack = parseInt(attackLabel.text);
+	attackLabel.text = attack;
 	
 	if (attack>9 && oldAttack<10) {
-		attackLabels.get(unitID).position.x = attackLabels.get(unitID).position.x-5;
+		attackLabel.position.x = attackLabel.position.x-5;
 	} else if (attack<10 && oldAttack>9) {
-		attackLabels.get(unitID).position.x = attackLabels.get(unitID).position.x+5;
+		attackLabel.position.x = attackLabel.position.x+5;
 	}
 	
 }
@@ -865,7 +873,7 @@ function setPlayer1Mana(message) {
 	
 	var mana = message.player.mana;
 	
-	for (i = 1; i < 10; i++) {
+	for (let i = 1; i < 10; i++) {
 		if (mana>=i) player1ManaIcons.get(i).show(1);
 		else player1ManaIcons.get(i).show(0);
 	}	
@@ -875,7 +883,7 @@ function setPlayer2Mana(message) {
 	
 	var mana = message.player.mana;
 	
-	for (i = 1; i < 10; i++) {
+	for (let i = 1; i < 10; i++) {
 		if (mana>=i) player2ManaIcons.get(i).show(1);
 		else player2ManaIcons.get(i).show(0);
 	}	
@@ -937,7 +945,9 @@ function addPlayer2Notification(message) {
 function playUnitAnimation(message) {
 	
 	var targetUnit = sprites.get(message.unit.id);
+	if (!targetUnit) return;
 	var animationData = getFrameSet(message.unit);
+	if (!animationData || !animationData.frameStartEndIndices) return;
 	targetUnit.loop = animationData.loop;
 	targetUnit.fps = animationData.fps;
 	targetUnit.playAnimation(animationData.frameStartEndIndices);
@@ -947,7 +957,7 @@ function playUnitAnimation(message) {
 
 function deleteCard(message) {
 	var card = handContainers[message.position-1];
-	g.stage.removeChild(card);
+	if (card) g.stage.removeChild(card);
 	handContainers[message.position-1]=null;
 	handSprites[message.position-1]=null;
 	cardJSON[message.position-1]=null;
@@ -956,7 +966,7 @@ function deleteCard(message) {
 
 function deleteUnit(message) {
 	var unitContainer = spriteContainers.get(message.unit.id);
-	g.stage.removeChild(unitContainer);
+	if (unitContainer) g.stage.removeChild(unitContainer);
 	spriteContainers.delete(message.unit.id);
 	sprites.delete(message.unit.id);
 	attackLabels.delete(message.unit.id);
@@ -1016,7 +1026,7 @@ function play(){
 	}
 	
 	var continuingProjectiles = [];
-	for (i = 0; i < activeProjectiles.length; i++) {
+	for (let i = 0; i < activeProjectiles.length; i++) {
 		if(!executeProjectileMoveStep(activeProjectiles[i])) {
 			continuingProjectiles.push(activeProjectiles[i]);
 		}
@@ -1033,7 +1043,7 @@ function play(){
 	  }
     }
 
-    for (i = 0; i < completedMoves.length; i++) {
+    for (let i = 0; i < completedMoves.length; i++) {
       activeMoves.delete(completedMoves[i]);
     }
 
@@ -1069,7 +1079,7 @@ function play(){
 	}
 	
 	// tidy up animations that have finished playing
-	for (i = 0; i < playingEffects.length; i++) {
+	for (let i = 0; i < playingEffects.length; i++) {
 		if (playingEffects[i].killCountdown<=0) {
 			g.stage.removeChild(playingEffects[i]);
 			playingEffects.splice(i, 1);
