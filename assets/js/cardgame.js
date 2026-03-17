@@ -277,6 +277,19 @@ function drawUnit(message) {
 	
 	//console.log(message.unit);
 
+	// Prevent duplicate/ghost units without resetting labels:
+	// if this unit already exists, update its board position only.
+	if (spriteContainers.has(message.unit.id)) {
+		var existingContainer = spriteContainers.get(message.unit.id);
+		if (existingContainer != null) {
+			var existingX = message.tile.xpos - message.unit.correction.spriteTopLeftX;
+			var existingY = message.tile.ypos - message.unit.correction.spriteTopLeftY-20;
+			existingContainer.position.x = existingX;
+			existingContainer.position.y = existingY;
+		}
+		return;
+	}
+
 	var unitContainer = new PIXI.Container();
 	
 	// Draw unit in idle stance
@@ -285,8 +298,10 @@ function drawUnit(message) {
 	unit.loop = message.unit.animations.idle.loop;
 	unit.fps = message.unit.animations.idle.fps;
 	
-	var spriteX = message.unit.position.xpos - message.unit.correction.spriteTopLeftX;
-	var spriteY = message.unit.position.ypos - message.unit.correction.spriteTopLeftY-20;
+	// Use authoritative tile coordinates from backend drawUnit message.
+	// unit.position can be stale/zero for newly created visuals and causes top-left stacking.
+	var spriteX = message.tile.xpos - message.unit.correction.spriteTopLeftX;
+	var spriteY = message.tile.ypos - message.unit.correction.spriteTopLeftY-20;
 	
 	unit.setPosition(message.unit.correction.offsetX, message.unit.correction.offsetY);
     unit.width = message.unit.correction.imgWidth*(1+(message.unit.correction.spriteTopLeftX/message.unit.correction.imgWidth))*message.unit.correction.scale;
