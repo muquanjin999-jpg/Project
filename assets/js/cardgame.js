@@ -351,6 +351,16 @@ function drawUnit(message) {
 	sprites.set(message.unit.id, unit);
 	healthLabels.set(message.unit.id, healthText);
 	attackLabels.set(message.unit.id, attackText);
+
+	// Apply deferred stat updates that may have arrived before this visual was ready.
+	if (pendingAttackUpdates && pendingAttackUpdates.has(message.unit.id)) {
+		attackText.text = pendingAttackUpdates.get(message.unit.id);
+		pendingAttackUpdates.delete(message.unit.id);
+	}
+	if (pendingHealthUpdates && pendingHealthUpdates.has(message.unit.id)) {
+		healthText.text = pendingHealthUpdates.get(message.unit.id);
+		pendingHealthUpdates.delete(message.unit.id);
+	}
 	
 	
 	
@@ -599,7 +609,10 @@ function setUnitHealth(message) {
 	var health = message.health;
 
 	var healthLabel = healthLabels.get(unitID);
-	if (!healthLabel) return;
+	if (!healthLabel) {
+		if (pendingHealthUpdates) pendingHealthUpdates.set(unitID, health);
+		return;
+	}
 
 	var oldHealth = parseInt(healthLabel.text);
 	healthLabel.text = health;
@@ -617,7 +630,10 @@ function setUnitAttack(message) {
 	var attack = message.attack;
 
 	var attackLabel = attackLabels.get(unitID);
-	if (!attackLabel) return;
+	if (!attackLabel) {
+		if (pendingAttackUpdates) pendingAttackUpdates.set(unitID, attack);
+		return;
+	}
 
 	var oldAttack = parseInt(attackLabel.text);
 	attackLabel.text = attack;
@@ -1017,12 +1033,12 @@ function play(){
 	
 	// Draw Tile Actions
 	while (drawTileQueue.length>0) {
-		drawTile(drawTileQueue.pop());
+		drawTile(drawTileQueue.shift());
 	}
 	
 	// Draw Tile Actions
 	while (drawUnitQueue.length>0) {
-		drawUnit(drawUnitQueue.pop());
+		drawUnit(drawUnitQueue.shift());
 	}
 	
 	var continuingProjectiles = [];
