@@ -16,13 +16,22 @@ public class ReachabilityService {
         if (unit.getMoveRange() <= 0 && !unit.hasKeyword(UnitKeyword.FLYING)) return Collections.emptyList();
 
         if (unit.hasKeyword(UnitKeyword.FLYING)) {
+            // Flying ignores blocking units, but should still respect move range.
             List<TilePos> out = new ArrayList<>();
+            TilePos start = unit.getPosition();
+            if (start == null) return Collections.emptyList();
+
             for (int x = 0; x < board.getWidth(); x++) {
                 for (int y = 0; y < board.getHeight(); y++) {
                     TilePos p = new TilePos(x, y);
-                    if (board.isEmpty(p)) out.add(p);
+                    if (p.equals(start)) continue;
+                    if (!board.isEmpty(p)) continue;
+                    if (start.manhattanDistance(p) <= unit.getMoveRange()) {
+                        out.add(p);
+                    }
                 }
             }
+            out.sort(Comparator.comparingInt(TilePos::x).thenComparingInt(TilePos::y));
             return out;
         }
 

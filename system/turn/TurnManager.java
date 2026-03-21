@@ -57,13 +57,19 @@ public class TurnManager<T> {
 
         String endingPlayerId = state.getActivePlayerId();
 
-        // End-turn draw belongs to the player who ends the turn (per your design)
-        DrawResult<T> drawResult = drawSystem.drawOneForEndTurn(state, endingPlayerId);
-        if (drawResult.getOutcomeType() == DrawOutcomeType.DECK_EMPTY_LOSS) {
-            String loser = drawResult.getLoserPlayerId().orElseThrow(IllegalStateException::new);
-            String winner = state.getOpponent(loser).getId();
-            state.markWinner(winner);
-            return drawResult;
+        // End-turn draw belongs to the player who ends the turn.
+        // Custom rule: draw 2 cards per turn end.
+        DrawResult<T> drawResult = null;
+        for (int i = 0; i < 2; i++) {
+            DrawResult<T> oneDraw = drawSystem.drawOneForEndTurn(state, endingPlayerId);
+            drawResult = oneDraw;
+
+            if (oneDraw.getOutcomeType() == DrawOutcomeType.DECK_EMPTY_LOSS) {
+                String loser = oneDraw.getLoserPlayerId().orElseThrow(IllegalStateException::new);
+                String winner = state.getOpponent(loser).getId();
+                state.markWinner(winner);
+                return oneDraw;
+            }
         }
 
         // Switch active player and start their turn

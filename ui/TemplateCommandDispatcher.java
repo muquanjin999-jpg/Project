@@ -90,8 +90,10 @@ public final class TemplateCommandDispatcher {
         Player<?> p1 = domainState.getPlayer(GameState.P1);
         Player<?> p2 = domainState.getPlayer(GameState.P2);
 
-        structures.basic.Player bp1 = new structures.basic.Player(p1.getAvatar().getHp(), p1.getMana());
-        structures.basic.Player bp2 = new structures.basic.Player(p2.getAvatar().getHp(), p2.getMana());
+        int p1Hp = Math.max(0, p1.getAvatar().getHp());
+        int p2Hp = Math.max(0, p2.getAvatar().getHp());
+        structures.basic.Player bp1 = new structures.basic.Player(p1Hp, p1.getMana());
+        structures.basic.Player bp2 = new structures.basic.Player(p2Hp, p2.getMana());
         BasicCommands.setPlayer1Health(out, bp1);
         BasicCommands.setPlayer2Health(out, bp2);
         BasicCommands.setPlayer1Mana(out, bp1);

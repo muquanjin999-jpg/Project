@@ -2,6 +2,7 @@ package game.system.turn;
 
 import game.model.*;
 
+import java.util.Collections;
 import java.util.Optional;
 
 public class DrawSystem<T> {
@@ -9,6 +10,18 @@ public class DrawSystem<T> {
     public DrawResult<T> drawOneForEndTurn(GameState<T> state, String playerId) {
         Player<T> player = state.getPlayer(playerId);
         Optional<T> maybeCard = player.getDeck().draw();
+
+        if (!maybeCard.isPresent()) {
+            // Recycle discard pile back to deck when deck is empty.
+            java.util.List<T> recycled = player.getDiscardPile().drainAll();
+            if (!recycled.isEmpty()) {
+                Collections.shuffle(recycled);
+                for (T c : recycled) {
+                    player.getDeck().addBottom(c);
+                }
+                maybeCard = player.getDeck().draw();
+            }
+        }
 
         if (!maybeCard.isPresent()) {
             return DrawResult.deckEmptyLoss(playerId);
