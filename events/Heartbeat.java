@@ -23,7 +23,11 @@ public class Heartbeat implements EventProcessor {
 		if (!gameState.gameInitalised) return;
 		if (gameState.domainGameManager == null || gameState.domainState == null) return;
 		if (gameState.aiController == null) return;
-		if (gameState.domainState.isGameOver()) return;
+		if (gameState.domainState.isGameOver()) {
+			game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
+			events.EventMessages.showGameResultIfOver(out, gameState);
+			return;
+		}
 		
         // ==========================================================
         // Initial render release: wait one heartbeat so UI can create

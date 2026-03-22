@@ -75,7 +75,7 @@ public class TileClicked implements EventProcessor {
 				game.system.action.ValidationResult vr = gameState.domainGameManager.attack(
 						game.model.GameState.P1, selected.getId(), unitOnTile.getId());
 				if (!vr.isOk()) {
-					game.ui.TemplateCommandDispatcher.showNotification(out, vr.getMessage());
+					game.ui.TemplateCommandDispatcher.showNotification(out, events.EventMessages.normalizeValidationMessage(gameState, vr.getMessage()));
 					return;
 				}
 
@@ -94,6 +94,7 @@ public class TileClicked implements EventProcessor {
 
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
+				events.EventMessages.showGameResultIfOver(out, gameState);
 				return;
 			}
 
@@ -104,7 +105,7 @@ public class TileClicked implements EventProcessor {
 						.validateMove(gameState.domainState, game.model.GameState.P1, selected.getId(), clicked);
 
 				if (!vr.isOk()) {
-					game.ui.TemplateCommandDispatcher.showNotification(out, vr.getMessage());
+					game.ui.TemplateCommandDispatcher.showNotification(out, events.EventMessages.normalizeValidationMessage(gameState, vr.getMessage()));
 					return;
 				}
 
@@ -205,7 +206,7 @@ public class TileClicked implements EventProcessor {
 			game.system.action.ValidationResult vr = gameState.domainGameManager.playCardFromHand(
 					game.model.GameState.P1, handIndex, target);
 			if (!vr.isOk()) {
-				game.ui.TemplateCommandDispatcher.showNotification(out, vr.getMessage());
+				game.ui.TemplateCommandDispatcher.showNotification(out, events.EventMessages.normalizeValidationMessage(gameState, vr.getMessage()));
 				return;
 			}
 
@@ -224,6 +225,7 @@ public class TileClicked implements EventProcessor {
 			game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 			game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 			game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
+			events.EventMessages.showGameResultIfOver(out, gameState);
 			return;
 		}
 
@@ -231,22 +233,41 @@ public class TileClicked implements EventProcessor {
 		game.model.Unit unit = gameState.domainState.getBoard().getUnitAt(clicked).orElse(null);
 		game.card.CardTarget target = (unit != null) ? game.card.CardTarget.unit(unit.getId()) : game.card.CardTarget.tile(clicked);
 
+		if (selectedCard instanceof game.card.UnitCard) {
+			game.system.action.ActionValidator validator =
+					new game.system.action.ActionValidator(new game.system.action.ReachabilityService());
+			game.system.action.SummonPlacementService summonPlacementService =
+					new game.system.action.SummonPlacementService(validator);
+			game.system.action.ValidationResult precheck = summonPlacementService.validateSummonAt(
+					gameState.domainState, game.model.GameState.P1, (game.card.UnitCard) selectedCard, clicked);
+			if (!precheck.isOk()) {
+				game.ui.TemplateCommandDispatcher.showNotification(
+						out,
+						"(" + clicked.x() + "," + clicked.y() + ") " + precheck.getMessage()
+				);
+				rehighlightValidSummonTiles(out, gameState, (game.card.UnitCard) selectedCard);
+				return;
+			}
+		}
+
 		game.system.action.ValidationResult vr = gameState.domainGameManager.playCardFromHand(
 				game.model.GameState.P1, handIndex, target);
 		if (!vr.isOk()) {
-			game.ui.TemplateCommandDispatcher.showNotification(out, vr.getMessage());
+			game.ui.TemplateCommandDispatcher.showNotification(
+					out,
+					"(" + clicked.x() + "," + clicked.y() + ") " + events.EventMessages.normalizeValidationMessage(gameState, vr.getMessage())
+			);
+			if (selectedCard instanceof game.card.UnitCard) {
+				rehighlightValidSummonTiles(out, gameState, (game.card.UnitCard) selectedCard);
+			}
 			return;
 		}
 
-		if (selectedCard instanceof game.card.UnitCard) {
-		    gameState.inputLocked = true;
-		    gameState.animationLockTicks = 0;
-		    gameState.aiFallbackCooldownTicks = 0;
-		} else {
-		    gameState.inputLocked = false;
-		    gameState.animationLockTicks = 0;
-		    gameState.aiFallbackCooldownTicks = 0;
-		}
+		// PLAY_CARD has no reliable frontend "animation finished" ack.
+		// Keep interaction responsive and avoid sticky end-turn lock.
+		gameState.inputLocked = false;
+		gameState.animationLockTicks = 0;
+		gameState.aiFallbackCooldownTicks = 0;
 
 		gameState.selectedHandPos = null;
 		gameState.portalStepSourceUnitId = null;
@@ -264,18 +285,46 @@ public class TileClicked implements EventProcessor {
 		game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 		game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 		game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
+		events.EventMessages.showGameResultIfOver(out, gameState);
+	}
+
+	private void rehighlightValidSummonTiles(ActorRef out, GameState gameState, game.card.UnitCard unitCard) {
+		game.system.action.ActionValidator validator =
+				new game.system.action.ActionValidator(new game.system.action.ReachabilityService());
+		game.system.action.SummonPlacementService summonPlacementService =
+				new game.system.action.SummonPlacementService(validator);
+
+		java.util.Set<game.model.TilePos> highlights = summonPlacementService.validSummonTiles(
+				gameState.domainState, game.model.GameState.P1, unitCard);
+
+		game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
+		gameState.highlightedTargets.clear();
+		if (!highlights.isEmpty()) {
+			game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 5);
+		}
 	}
 
 	private void highlightForSelectedUnit(ActorRef out, GameState gameState, game.model.Unit unit) {
 		java.util.Map<game.model.TilePos, Integer> tileModes = new java.util.HashMap<>();
-		game.system.action.ReachabilityService rs = new game.system.action.ReachabilityService();
-
-		for (game.model.TilePos p : rs.reachableTiles(gameState.domainState.getBoard(), unit)) {
-			tileModes.put(p, 5); 
-		}
-
 		game.system.action.ActionValidator validator =
 				new game.system.action.ActionValidator(new game.system.action.ReachabilityService());
+
+		// Highlight only truly legal moves for the current turn/state.
+		// Iterate the whole board and trust validateMove as the single source of truth,
+		// so highlighted green tiles always match clickable legal moves.
+		int boardW = gameState.domainState.getRules().getBoardWidth();
+		int boardH = gameState.domainState.getRules().getBoardHeight();
+		for (int x = 0; x < boardW; x++) {
+			for (int y = 0; y < boardH; y++) {
+				game.model.TilePos p = new game.model.TilePos(x, y);
+				game.system.action.ValidationResult moveVr = validator.validateMove(
+						gameState.domainState, game.model.GameState.P1, unit.getId(), p);
+				if (moveVr.isOk()) {
+					tileModes.put(p, 5);
+				}
+			}
+		}
+
 		for (game.model.Unit enemy : gameState.domainState.getBoard().getAllUnits()) {
 			if (enemy.getOwnerId().equals(game.model.GameState.P1)) continue;
 			game.system.action.ValidationResult vr = validator.validateAttack(

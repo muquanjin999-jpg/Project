@@ -22,6 +22,7 @@ public class Initalize implements EventProcessor {
 	public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
 		// Mark the template GameState as initialised.
 		gameState.gameInitalised = true;
+		gameState.gameResultAnnounced = false;
 
 		// Reset UI interaction state
 		gameState.inputLocked = false;

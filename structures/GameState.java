@@ -23,6 +23,7 @@ public class GameState {
     public boolean initialRenderPendingUnlock = false;
 
     public boolean gameInitalised = false;
+    public boolean gameResultAnnounced = false;
 
     // -----------------------------
     // Phase 2 UI interaction state

@@ -100,7 +100,7 @@ public class CardClicked implements EventProcessor {
 						game.model.GameState.P1, handIndex, game.card.CardTarget.none());
 
 				if (!vr0.isOk()) {
-					game.ui.TemplateCommandDispatcher.showNotification(out, vr0.getMessage());
+					game.ui.TemplateCommandDispatcher.showNotification(out, events.EventMessages.normalizeValidationMessage(gameState, vr0.getMessage()));
 					return;
 				}
 
@@ -121,6 +121,7 @@ public class CardClicked implements EventProcessor {
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
+				events.EventMessages.showGameResultIfOver(out, gameState);
 				return;
 			}
 		}
@@ -129,17 +130,12 @@ public class CardClicked implements EventProcessor {
 
 		game.system.action.ActionValidator validator =
 				new game.system.action.ActionValidator(new game.system.action.ReachabilityService());
+		game.system.action.SummonPlacementService summonPlacementService =
+				new game.system.action.SummonPlacementService(validator);
 
 		if (card instanceof game.card.UnitCard) {
-			game.card.UnitCard uc = (game.card.UnitCard) card;
-			for (int x = 0; x < gameState.domainState.getRules().getBoardWidth(); x++) {
-				for (int y = 0; y < gameState.domainState.getRules().getBoardHeight(); y++) {
-					game.model.TilePos p = new game.model.TilePos(x, y);
-					game.system.action.ValidationResult vr = validator.validateSummon(
-							gameState.domainState, game.model.GameState.P1, uc, p);
-					if (vr.isOk()) highlights.add(p);
-				}
-			}
+			highlights = summonPlacementService.validSummonTiles(
+					gameState.domainState, game.model.GameState.P1, (game.card.UnitCard) card);
 			if (!highlights.isEmpty()) {
 				game.ui.TemplateCommandDispatcher.highlightTiles(out, gameState, highlights, 5);
 				game.ui.TemplateCommandDispatcher.showNotification(out, "Summon selected. Green tiles = valid summon positions.", game.model.GameState.P1, 4);
