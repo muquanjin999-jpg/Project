@@ -116,6 +116,8 @@ public final class TemplateCommandDispatcher {
 
     public static void renderAllUnits(ActorRef out, structures.GameState templateState, GameState<?> domainState) {
         refreshOwnershipHighlights(out, templateState, domainState);
+        Unit p1Avatar = domainState.getPlayer(GameState.P1).getAvatar();
+        Unit p2Avatar = domainState.getPlayer(GameState.P2).getAvatar();
 
         // 1) collect current domain unit ids
         Set<String> currentIds = new HashSet<>();
@@ -124,8 +126,8 @@ public final class TemplateCommandDispatcher {
         }
 
         // Keep avatar visuals as well; they may not be part of board.getAllUnits()
-        currentIds.add(domainState.getPlayer(GameState.P1).getAvatar().getId());
-        currentIds.add(domainState.getPlayer(GameState.P2).getAvatar().getId());
+        currentIds.add(p1Avatar.getId());
+        currentIds.add(p2Avatar.getId());
 
         // 2) delete visuals that no longer exist in domain state
         for (String existingId : new HashSet<>(templateState.visualUnits.keySet())) {
@@ -134,11 +136,18 @@ public final class TemplateCommandDispatcher {
             }
         }
 
+        // Keep avatar visuals/stats in sync, but do not re-draw them through board unit loop
+        syncAvatarVisual(out, templateState, p1Avatar, StaticConfFiles.humanAvatar);
+        syncAvatarVisual(out, templateState, p2Avatar, StaticConfFiles.aiAvatar);
+
         // 3) draw/update all current units
         int boardW = domainState.getRules().getBoardWidth();
         int boardH = domainState.getRules().getBoardHeight();
 
         for (Unit u : domainState.getBoard().getAllUnits()) {
+            if (u.getId().equals(p1Avatar.getId()) || u.getId().equals(p2Avatar.getId())) {
+                continue;
+            }
             TilePos pos = u.getPosition();
 
             // Guard against null / illegal positions; otherwise visuals may appear
@@ -162,6 +171,25 @@ public final class TemplateCommandDispatcher {
                 BasicCommands.setUnitAttack(out, visual, u.getAttack());
             }
         }
+    }
+
+    private static void syncAvatarVisual(ActorRef out, structures.GameState templateState, Unit avatar, String avatarConf) {
+        if (avatar == null) return;
+
+        structures.basic.Unit visual = templateState.visualUnits.get(avatar.getId());
+        if (visual == null) {
+            drawAvatar(out, templateState, avatar, avatarConf);
+            return;
+        }
+
+        if (!templateState.uiInitialUnitsDrawn) {
+            templateState.pendingUnitHp.put(avatar.getId(), avatar.getHp());
+            templateState.pendingUnitAtk.put(avatar.getId(), avatar.getAttack());
+            return;
+        }
+
+        BasicCommands.setUnitHealth(out, visual, avatar.getHp());
+        BasicCommands.setUnitAttack(out, visual, avatar.getAttack());
     }
 
     public static void moveUnit(ActorRef out, structures.GameState templateState, Unit domainUnit) {

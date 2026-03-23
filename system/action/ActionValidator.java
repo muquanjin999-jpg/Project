@@ -80,22 +80,25 @@ public class ActionValidator {
         if (!board.isInside(tile)) return ValidationResult.fail("summon tile outside board");
         if (!board.isEmpty(tile)) return ValidationResult.fail("summon tile occupied");
 
+        // Summoning rule:
+        // target tile must be orthogonally adjacent to the friendly avatar
+        // OR any friendly unit.
         boolean adjacentFriendly = false;
         game.model.Avatar friendlyAvatar = state.getPlayer(ownerId).getAvatar();
         for (TilePos adj : board.getAdjacentOrthogonal(tile)) {
             Unit u = board.getUnitAt(adj).orElse(null);
-            if (u != null && u.getOwnerId().equals(ownerId)) {
+            if (u != null && ownerId.equals(u.getOwnerId())) {
                 adjacentFriendly = true;
                 break;
             }
             if (friendlyAvatar != null
                     && friendlyAvatar.getPosition() != null
-                    && adj.equals(friendlyAvatar.getPosition())) {
+                    && friendlyAvatar.getPosition().equals(adj)) {
                 adjacentFriendly = true;
                 break;
             }
         }
-        if (!adjacentFriendly) return ValidationResult.fail("summon must be adjacent to friendly unit");
+        if (!adjacentFriendly) return ValidationResult.fail("summon must be adjacent to friendly avatar or unit");
 
         if (!state.getPlayer(ownerId).canPay(card.getCost())) return ValidationResult.fail("not enough mana");
         return ValidationResult.ok();
